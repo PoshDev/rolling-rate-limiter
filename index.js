@@ -34,7 +34,7 @@ function RateLimiter (options) {
       };
     }
 
-    return function(id, cb) {
+    const fn = function(id, cb) {
       if (!cb) {
         cb = id;
         id = "";
@@ -81,8 +81,13 @@ function RateLimiter (options) {
         return cb(null, result, remaining);
       });
     };
+    fn.reset = (id = "", cb = null) => {
+      cb = cb || ((err) => null);
+      return redis.del(namespace + id, cb);
+    };
+    return fn;
   } else {
-    return function() {
+    const fn = function() {
       var args = Array.prototype.slice.call(arguments);
       var cb = args.pop();
       var id;
@@ -129,6 +134,17 @@ function RateLimiter (options) {
         return result;
       }
     };
+    fn.reset = (id = "", cb = null) => {
+      if (storage[id] && timeouts[id]) {
+        clearTimeout(timeouts[id]);
+        delete storage[id];
+        delete timeouts[id];
+      }
+      if (cb) {
+        cb(null);
+      }
+    };
+    return fn;
   }
 }
 
